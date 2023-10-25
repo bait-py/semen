@@ -43,3 +43,10 @@ tr:nth-child(odd) {
 tr:hover {
     background-color: #ccc;
 }
+
+body {
+    background-image: url("images/ocelot.jpg");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
