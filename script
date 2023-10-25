@@ -1,0 +1,92 @@
+const apiKey = 'RGAPI-57117bee-a188-4182-9b54-b14b98005998'; // Reemplaza con tu clave de API de Riot Games
+
+const jugadores = [
+    { nombre: 'Bruno', rol: 'JUNGLE', summonerName: 'cncr get' },
+    { nombre: 'Alex', rol: 'ADC', summonerName: 'OceloteMusulman' },
+    { nombre: 'Jordi', rol: 'ADC', summonerName: 'pancraciosinpelo' },
+    { nombre: 'Aritz', rol: 'MID', summonerName: 'obesomorbido 7w7' },
+    { nombre: 'Jua', rol: 'ADC', summonerName: 'elpepe gameplays' },
+    { nombre: 'Diego', rol: 'SUP', summonerName: 'EcheniqueGitAno' }
+    
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+    mostrarResultadosEnTabla(jugadores);
+});
+
+function buscarEstadisticas(jugador) {
+    const baseUrl = `https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${jugador.summonerName}?api_key=${apiKey}`;
+
+    return fetch(baseUrl)
+        .then(response => response.json())
+        .then(data => {
+            return fetch(`https://euw1.api.riotgames.com/lol/league/v4/entries/by-summoner/${data.id}?api_key=${apiKey}`)
+                .then(response => response.json())
+                .then(statsData => ({ jugador, statsData }));
+        })
+        .catch(error => {
+            console.error(`Error al buscar el invocador ${jugador.summonerName}:`, error);
+            return null;
+        });
+}
+
+function mostrarResultadosEnTabla(jugadores) {
+    const tablaResultados = document.getElementById('tablaResultados');
+    tablaResultados.innerHTML = '';
+
+    Promise.all(jugadores.map(buscarEstadisticas))
+        .then(results => {
+            results.forEach(result => {
+                if (result) {
+                    const soloQueue = result.statsData.find(queue => queue.queueType === 'RANKED_SOLO_5x5');
+                    if (soloQueue) {
+                        const fila = document.createElement('tr');
+                        
+                        // Lógica para establecer el color de fondo en función del rango
+                        let colorFondo = '';
+                        if (soloQueue.tier === 'BRONZE') {
+                            colorFondo = 'orange';
+                        } else if (soloQueue.tier === 'SILVER') {
+                            colorFondo = 'silver';
+                        } else if (soloQueue.tier === 'GOLD') {
+                            colorFondo = 'gold';
+                        } else if (soloQueue.tier === 'IRON') {
+                            colorFondo = 'grey';
+                        } else if (soloQueue.tier === 'PLATINUM') {
+                            colorFondo = '#6699CC';
+                        }
+                        
+                        fila.style.backgroundColor = colorFondo;
+
+                        fila.innerHTML = `
+                            <td>${result.jugador.nombre}</td>
+                            <td><img src="${getRoleImage(result.jugador.rol)}" alt="${result.jugador.rol}"></td>
+                            <td>${soloQueue.summonerName}</td>
+                            <td>${soloQueue.tier} ${soloQueue.rank}</td>
+                            <td>${soloQueue.leaguePoints}</td>
+                            <td><a href="https://www.op.gg/summoners/euw/${encodeURIComponent(soloQueue.summonerName)}" target="_blank">OP.GG</a></td>
+                        `;
+                        tablaResultados.appendChild(fila);
+                    } else {
+                        console.error(`El jugador ${result.jugador.nombre} no está en cola clasificatoria solo/dúo.`);
+                    }
+                } else {
+                    console.error('No se pudieron obtener estadísticas para algunos jugadores.');
+                }
+            });
+        });
+}
+
+function getRoleImage(rol) {
+    // Aquí mapeas el rol a la ruta de la imagen correspondiente, por ejemplo, 'images/jgl.png' para jungla, 'images/adc.png' para tirador, etc.
+    const roleMap = {
+        JUNGLE: 'images/jgl.png',
+        ADC: 'images/adc.png',
+        TOP: 'images/top.png',
+        SUP: 'images/sup.png',
+        MID: 'images/mid.png',
+        // Agrega más roles según sea necesario.
+    };
+
+    return roleMap[rol] || 'images/default.png'; // Ruta de imagen por defecto si no se encuentra el rol.
+}
